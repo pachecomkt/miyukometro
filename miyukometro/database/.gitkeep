@@ -1,0 +1,53 @@
+# Arquivos do Banco de Dados
+
+Este diretório contém todos os scripts SQL necessários para configurar o banco de dados Miyukometro no Supabase.
+
+## 📁 Estrutura
+
+```
+database/
+├── schema.sql          # Estrutura completa do banco de dados
+├── security.sql        # Políticas de segurança (RLS) e permissões
+├── queries.sql         # Queries úteis e exemplos
+├── README.md           # Documentação completa do banco
+├── INSTALL.md          # Guia passo-a-passo de instalação
+└── .gitkeep
+```
+
+## 🚀 Início Rápido
+
+1. Leia o guia de instalação: **[INSTALL.md](./INSTALL.md)**
+2. Execute `schema.sql` no Supabase SQL Editor
+3. Execute `security.sql` no Supabase SQL Editor
+4. Configure variáveis de ambiente conforme `.env.example`
+5. Teste a conexão
+
+## 📚 Documentação
+
+- **[README.md](./README.md)** - Documentação completa do banco de dados
+- **[INSTALL.md](./INSTALL.md)** - Instruções detalhadas de instalação
+
+## ⚡ Ordem de Execução
+
+**Sempre execute nesta ordem:**
+
+1️⃣ `schema.sql` - Cria tabelas, funções, triggers
+2️⃣ `security.sql` - Configura RLS e permissões
+
+❌ **Nunca** execute `security.sql` antes de `schema.sql`
+
+## 🔍 Queries Úteis
+
+Consulte `queries.sql` para exemplos de:
+- Inserção de dados
+- Consultas básicas e avançadas
+- Análises estatísticas
+- Detecção de abuso
+- Manutenção do banco
+
+## 🆘 Suporte
+
+Se encontrar problemas:
+1. Verifique `INSTALL.md` seção Troubleshooting
+2. Confirme que executou os scripts na ordem correta
+3. Consulte logs do Supabase

@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Miyukometro - Sistema de Monitoramento</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        .animate-shake {
+            animation: shake 0.5s;
+        }
+        .gradient-text {
+            background: linear-gradient(to right, #f87171, #fb923c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-red-900 text-white">
+    <div class="max-w-4xl mx-auto p-4">
+        <!-- Header com foto -->
+        <div class="text-center mb-8 pt-8">
+            <div class="relative inline-block">
+                <div class="w-48 h-48 rounded-full bg-gradient-to-br from-red-500 to-orange-500 p-1 mb-4 mx-auto shadow-2xl">
+                    <div class="w-full h-full rounded-full bg-gray-800 flex items-center justify-center text-6xl font-bold">
+                        M
+                    </div>
+                </div>
+                <div id="warningIcon" class="absolute -top-2 -right-2 hidden">
+                    <svg class="w-12 h-12 text-red-500 drop-shadow-lg animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+            </div>
+            <h1 class="text-5xl font-bold mb-2 gradient-text">
+                MIYUKOMETRO
+            </h1>
+            <p class="text-gray-400">Sistema de Monitoramento do bola</p>
+        </div>
+
+        <!-- Medidor de perigo -->
+        <div class="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 mb-8 border border-red-500/30 shadow-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <span class="text-gray-400 font-semibold">NÍVEL DE PERIGO:</span>
+                <span id="dangerLevel" class="text-2xl font-bold text-yellow-400 animate-pulse">
+                    BAIXO
+                </span>
+            </div>
+            
+            <div class="relative h-8 bg-gray-700 rounded-full overflow-hidden shadow-inner">
+                <div id="dangerBar" class="h-full bg-yellow-500 transition-all duration-1000 ease-out shadow-lg" style="width: 0%">
+                    <div class="h-full w-full animate-pulse opacity-50 bg-white"></div>
+                </div>
+            </div>
+            
+            <div class="flex justify-between mt-2 text-xs text-gray-500">
+                <span>0%</span>
+                <span>SEGURO</span>
+                <span>PERIGO</span>
+                <span>100%</span>
+            </div>
+            
+            <div class="text-center mt-4">
+                <span id="scoreDisplay" class="text-4xl font-bold text-red-400">0</span>
+                <span class="text-gray-400 ml-2">pontos de perigo</span>
+            </div>
+        </div>
+
+        <!-- Mensagem de erro -->
+        <div id="errorMessage" class="bg-red-500/20 border-2 border-red-500 rounded-lg p-4 mb-6 animate-shake hidden">
+            <div class="flex items-center gap-3">
+                <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                <div>
+                    <p class="font-bold text-red-400">ERRO 404: Funcionalidade não encontrada</p>
+                    <p class="text-sm text-gray-300">Avaliações positivas foram desabilitadas por motivos de segurança. 🤡</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Formulário de comentário -->
+        <div class="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 mb-8 border border-gray-700 shadow-xl">
+            <h2 class="text-2xl font-bold mb-4">Deixe sua avaliação</h2>
+            
+            <div class="mb-4">
+                <label class="flex items-center gap-2 mb-2">
+                    <input type="checkbox" id="anonymousCheck" checked class="w-4 h-4 rounded bg-gray-700 border-gray-600 text-red-600 focus:ring-red-500">
+                    <span class="text-gray-300">Enviar como anônimo</span>
+                </label>
+                <input
+                    id="nameInput"
+                    type="text"
+                    placeholder="Seu nome"
+                    class="w-full bg-gray-700 rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 hidden"
+                >
+            </div>
+
+            <textarea
+                id="commentText"
+                placeholder="Escreva seu comentário aqui..."
+                class="w-full bg-gray-700 rounded-lg p-4 mb-4 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 min-h-[120px]"
+            ></textarea>
+
+            <!-- Upload de arquivo -->
+            <div class="mb-4">
+                <label class="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 rounded-lg p-3 cursor-pointer transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                    </svg>
+                    <span>Anexar arquivo</span>
+                    <input type="file" id="fileInput" class="hidden">
+                </label>
+                <div id="fileDisplay" class="mt-2 hidden">
+                    <div class="flex items-center gap-2 bg-gray-700 rounded-lg p-2">
+                        <span id="fileName" class="text-sm flex-1"></span>
+                        <button onclick="removeFile()" class="text-red-400 hover:text-red-300">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botões -->
+            <div class="flex gap-4">
+                <button
+                    onclick="submitReview(false)"
+                    class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-6 rounded-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2 shadow-lg"
+                >
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5"/>
+                    </svg>
+                    DESLIKE (Recomendado)
+                </button>
+                
+                <button
+                    onclick="submitReview(true)"
+                    class="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-400 font-bold py-4 px-6 rounded-lg transition-all flex items-center justify-center gap-2 opacity-50"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"/>
+                    </svg>
+                    Like
+                </button>
+            </div>
+        </div>
+
+        <!-- Lista de comentários -->
+        <div class="space-y-4">
+            <h2 class="text-2xl font-bold mb-4">Avaliações (<span id="commentCount">0</span>)</h2>
+            <div id="commentsList">
+                <div class="text-center text-gray-500 py-8">
+                    Nenhuma avaliação ainda. Seja o primeiro a avaliar!
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // CONFIGURAÇÃO DO SUPABASE
+        // ============================================
+        const SUPABASE_URL = 'https://dorjkpiiwqvtfflmlzou.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvcmprcGlpd3F2dGZmbG1sem91Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4MzgwMzQsImV4cCI6MjA3OTQxNDAzNH0.Ltwv6YBSJoh07jrU7_0t7YwXkiOnTLwf4Lh3oLUpUI4';
+        
+        // Inicializar cliente Supabase
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        console.log('✅ Supabase inicializado!', SUPABASE_URL);
+        
+        // ============================================
+        // VARIÁVEIS GLOBAIS
+        // ============================================
+        let score = 0;
+        let comments = [];
+        let selectedFile = null;
+        let currentSession = null;
+        let currentUserId = null;
+
+        // Manipulador de checkbox anônimo
+        document.getElementById('anonymousCheck').addEventListener('change', function(e) {
+            const nameInput = document.getElementById('nameInput');
+            if (e.target.checked) {
+                nameInput.classList.add('hidden');
+                nameInput.value = '';
+            } else {
+                nameInput.classList.remove('hidden');
+            }
+        });
+
+        // Manipulador de arquivo
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                selectedFile = {
+                    name: file.name,
+                    size: (file.size / 1024).toFixed(2) + ' KB'
+                };
+                document.getElementById('fileName').textContent = `${selectedFile.name} (${selectedFile.size})`;
+                document.getElementById('fileDisplay').classList.remove('hidden');
+            }
+        });
+
+        function removeFile() {
+            selectedFile = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('fileDisplay').classList.add('hidden');
+        }
+
+        // ============================================
+        // FUNÇÕES DO SUPABASE
+        // ============================================
+        
+        // Inicializar sessão ao carregar a página
+        async function initSession() {
+            try {
+                // Criar sessão anônima
+                const { data, error } = await supabase.rpc('create_anonymous_session', {
+                    p_ip_address: '127.0.0.1', // Em produção, pegar IP real do servidor
+                    p_user_agent: navigator.userAgent
+                });
+                
+                if (error) {
+                    console.error('Erro ao criar sessão:', error);
+                    showNotification('Erro ao conectar ao banco de dados', 'error');
+                    return;
+                }
+                
+                if (data && data.length > 0) {
+                    currentSession = data[0].session_token;
+                    currentUserId = data[0].user_id;
+                    console.log('✅ Sessão criada com sucesso!', data[0]);
+                    showNotification('Conectado ao banco de dados!', 'success');
+                }
+                
+                // Carregar dados iniciais
+                await loadDashboardStats();
+                await loadReviews();
+                
+            } catch (err) {
+                console.error('Erro ao inicializar:', err);
+                showNotification('Erro ao inicializar sistema', 'error');
+            }
+        }
+        
+        // Carregar estatísticas do dashboard
+        async function loadDashboardStats() {
+            try {
+                const { data, error } = await supabase
+                    .from('dashboard_stats')
+                    .select('*')
+                    .single();
+                
+                if (error) throw error;
+                
+                if (data) {
+                    score = data.current_score || 0;
+                    updateDangerDisplay();
+                    console.log('📊 Stats carregadas:', data);
+                }
+            } catch (err) {
+                console.error('Erro ao carregar stats:', err);
+            }
+        }
+        
+        // Carregar reviews do banco
+        async function loadReviews() {
+            try {
+                const { data, error } = await supabase
+                    .from('reviews_with_details')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(20);
+                
+                if (error) throw error;
+                
+                comments = data.map(review => ({
+                    id: review.id,
+                    text: review.comment_text,
+                    name: review.user_name,
+                    timestamp: new Date(review.created_at).toLocaleString('pt-BR'),
+                    files: review.files
+                }));
+                
+                updateCommentsDisplay();
+                console.log(`📝 ${comments.length} reviews carregadas`);
+                
+            } catch (err) {
+                console.error('Erro ao carregar reviews:', err);
+            }
+        }
+        
+        // Mostrar notificação
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-green-500/20 border-green-500' :
+                           type === 'error' ? 'bg-red-500/20 border-red-500' :
+                           'bg-blue-500/20 border-blue-500';
+            
+            notification.className = `fixed top-4 right-4 ${bgColor} border-2 rounded-lg p-4 max-w-md shadow-lg z-50 transition-all`;
+            notification.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="text-white">${message}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        async function submitReview(isPositive) {
+            const commentText = document.getElementById('commentText').value.trim();
+            const isAnonymous = document.getElementById('anonymousCheck').checked;
+            const userName = isAnonymous ? 'Anônimo' : (document.getElementById('nameInput').value.trim() || 'Anônimo');
+
+            // Mostrar erro se tentar dar like
+            if (isPositive) {
+                const errorMsg = document.getElementById('errorMessage');
+                errorMsg.classList.remove('hidden');
+                setTimeout(() => {
+                    errorMsg.classList.add('hidden');
+                }, 3000);
+                return;
+            }
+
+            // Validar que tem comentário ou arquivo
+            if (!commentText && !selectedFile) {
+                showNotification('Escreva um comentário ou anexe um arquivo!', 'error');
+                return;
+            }
+
+            // Verificar se tem sessão
+            if (!currentUserId) {
+                showNotification('Criando sessão...', 'info');
+                await initSession();
+                if (!currentUserId) {
+                    showNotification('Erro ao criar sessão. Tente novamente.', 'error');
+                    return;
+                }
+            }
+
+            try {
+                // Verificar rate limit
+                const { data: rateLimitOk } = await supabase.rpc('check_rate_limit', {
+                    p_ip_address: '127.0.0.1',
+                    p_time_window: '5 minutes',
+                    p_max_requests: 10
+                });
+
+                if (!rateLimitOk) {
+                    showNotification('⚠️ Você está enviando reviews muito rápido! Aguarde 5 minutos.', 'error');
+                    return;
+                }
+
+                // Inserir review no banco
+                const { data: review, error } = await supabase
+                    .from('reviews')
+                    .insert({
+                        user_id: currentUserId,
+                        comment_text: commentText || null,
+                        is_positive: false,
+                        score_value: 10,
+                        ip_address: '127.0.0.1',
+                        user_agent: navigator.userAgent
+                    })
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                console.log('✅ Review criada:', review);
+                showNotification('✅ Avaliação enviada com sucesso!', 'success');
+
+                // Atualizar nome do usuário se não for anônimo
+                if (!isAnonymous && userName !== 'Anônimo') {
+                    await supabase
+                        .from('users')
+                        .update({ name: userName, is_anonymous: false })
+                        .eq('id', currentUserId);
+                }
+
+                // Recarregar dados
+                await loadDashboardStats();
+                await loadReviews();
+
+                // Limpar formulário
+                document.getElementById('commentText').value = '';
+                document.getElementById('nameInput').value = '';
+                removeFile();
+
+            } catch (err) {
+                console.error('Erro ao enviar review:', err);
+                showNotification('❌ Erro ao enviar avaliação: ' + err.message, 'error');
+            }
+        }
+
+        // Atualizar display do nível de perigo
+        function updateDangerDisplay() {
+            document.getElementById('scoreDisplay').textContent = score;
+            
+            const percentage = Math.min(score, 100);
+            const dangerBar = document.getElementById('dangerBar');
+            const dangerLevel = document.getElementById('dangerLevel');
+            const warningIcon = document.getElementById('warningIcon');
+            
+            dangerBar.style.width = percentage + '%';
+            
+            let level, color, bgColor;
+            if (score < 30) {
+                level = 'BAIXO';
+                color = 'text-yellow-400';
+                bgColor = 'bg-yellow-500';
+            } else if (score < 60) {
+                level = 'MÉDIO';
+                color = 'text-orange-400';
+                bgColor = 'bg-orange-500';
+            } else if (score < 90) {
+                level = 'ALTO';
+                color = 'text-red-400';
+                bgColor = 'bg-red-500';
+                warningIcon.classList.remove('hidden');
+            } else {
+                level = 'CRÍTICO';
+                color = 'text-red-600';
+                bgColor = 'bg-red-600';
+                warningIcon.classList.remove('hidden');
+            }
+            
+            dangerLevel.textContent = level;
+            dangerLevel.className = `text-2xl font-bold ${color} animate-pulse`;
+            dangerBar.className = `h-full ${bgColor} transition-all duration-1000 ease-out shadow-lg`;
+        }
+        
+        // Atualizar display de comentários
+        function updateCommentsDisplay() {
+            document.getElementById('commentCount').textContent = comments.length;
+            
+            const commentsList = document.getElementById('commentsList');
+            if (comments.length === 0) {
+                commentsList.innerHTML = '<div class="text-center text-gray-500 py-8">Nenhuma avaliação ainda. Seja o primeiro a avaliar!</div>';
+            } else {
+                commentsList.innerHTML = comments.map(comment => {
+                    const hasFiles = comment.files && comment.files.length > 0;
+                    return `
+                    <div class="bg-gray-800/50 backdrop-blur-sm rounded-lg p-4 border border-red-500/30 shadow-lg">
+                        <div class="flex items-start gap-3">
+                            <div class="bg-red-600 rounded-full p-2 mt-1">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5"/>
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="font-bold text-red-400">${comment.name}</span>
+                                    <span class="text-xs text-gray-500">${comment.timestamp}</span>
+                                </div>
+                                <p class="text-gray-300 mb-2">${comment.text || '(sem comentário)'}</p>
+                                ${hasFiles ? comment.files.map(file => `
+                                    <div class="bg-gray-700 rounded p-2 mb-2 text-sm">
+                                        📎 ${file.file_name} (${(file.file_size / 1024).toFixed(2)} KB)
+                                    </div>
+                                `).join('') : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                }).join('');
+            }
+        }
+        
+        // Inicializar quando a página carregar
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Miyukometro iniciando...');
+            initSession();
+        });
+    </script>
+</body>
+</html>
