@@ -1,12 +1,7 @@
 {
-  "version": 2,
   "rewrites": [
     {
       "source": "/",
-      "destination": "/miyukometro.html"
-    },
-    {
-      "source": "/index.html",
       "destination": "/miyukometro.html"
     }
   ]
